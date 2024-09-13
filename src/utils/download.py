@@ -5,7 +5,7 @@ import json
 import os
 import io
 
-# Initialize S3 client
+
 s3 = boto3.client('s3')
 
 def load_s3_file_info(export_dir):
@@ -27,7 +27,7 @@ def convert_df_to_bytestream(df):
     """
     bytestream = io.BytesIO()
     df.to_csv(bytestream, index=False)
-    bytestream.seek(0)  # Reset the pointer to the beginning of the stream
+    bytestream.seek(0)  
     return bytestream
 
 def read_csv_from_s3(bucket_name, s3_file_path):
@@ -36,13 +36,13 @@ def read_csv_from_s3(bucket_name, s3_file_path):
     Converts the DataFrame to a bytestream.
     """
     try:
-        # Get the object from S3
+        
         response = s3.get_object(Bucket=bucket_name, Key=s3_file_path)
         
-        # Read the CSV file into a DataFrame
+        
         df = pd.read_csv(response['Body'])
         
-        # Convert DataFrame to bytestream
+        
         bytestream = convert_df_to_bytestream(df)
         
         return bytestream
@@ -58,21 +58,21 @@ def read_csv_from_s3(bucket_name, s3_file_path):
         print(f"An error occurred: {e}")
     return None
 
-# Example usage
+
 if __name__ == '__main__':
-    # Directory where JSON file is stored
+    
     export_dir = 'output/s3_files'
     
-    # Load bucket name and s3_file_path from JSON
+    
     bucket_name, s3_file_path = load_s3_file_info(export_dir)
 
     if bucket_name and s3_file_path:
-        # Read the CSV from S3 and convert to bytestream
+        
         bytestream = read_csv_from_s3(bucket_name, s3_file_path)
 
-        # Print DataFrame if it was successfully loaded
+        
         if bytestream is not None:
-            # Read bytestream into DataFrame to display
+            
             df = pd.read_csv(bytestream)
             print('***************data frame***************')
             print(df)

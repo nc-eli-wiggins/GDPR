@@ -4,12 +4,16 @@ import os
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from datetime import datetime
 
-# Initialize S3 client
 s3 = boto3.client('s3')
 
 def read_bucket_name():
     """
-    Reads the bucket name from a predefined source in S3.
+    This function reads the bucket name from a specified AWS S3 object.
+    The object is expected to contain a JSON file with a 'outputs' section,
+    and within that section, a 'gdpr_bucket' key with the bucket name as its value.
+
+    Returns:
+    str: The name of the GDPR bucket as read from the S3 object.
     """
     bucket_name = "tf-state-gdpr-obfuscator"
     object_key = "tf-state"
@@ -34,6 +38,12 @@ def read_bucket_name():
 def generate_s3_file_path(local_file_path):
     """
     Generates a timestamped file name for the S3 object.
+
+    Parameters:
+    local_file_path (str): The path to the local file for which a timestamped name is to be generated.
+
+    Returns:
+    str: A string representing the timestamped file name in the format 'YYYY_DD_MM_HH:MM:SS_filename'.
     """
     timestamp = datetime.now().strftime('%Y_%d_%m_%H:%M:%S')
     file_name = os.path.basename(local_file_path)
@@ -43,10 +53,18 @@ def generate_s3_file_path(local_file_path):
 def upload_file_to_s3(local_file_path, bucket_name):
     """
     Uploads a file to S3 with a timestamped filename.
+
+    Parameters:
+    local_file_path (str): The path to the local file that needs to be uploaded.
+    bucket_name (str): The name of the S3 bucket where the file will be uploaded.
+
+    Returns:
+    str: The timestamped filename of the uploaded file in the format 'YYYY_DD_MM_HH:MM:SS_filename'.
+         If the file upload fails, returns None.
     """
     if not os.path.isfile(local_file_path):
         print(f"The file {local_file_path} does not exist")
-        return
+        return None
 
     s3_file_path = generate_s3_file_path(local_file_path)
 
@@ -80,7 +98,7 @@ def export_to_json(bucket_name, s3_file_path, export_dir):
     with open(export_file, 'w') as json_file:
         json.dump(data, json_file)
 
-# Example usage
+
 if __name__ == '__main__':
     local_file_path = 'src/data/dummy_data_20_entries.csv'
     bucket_name = read_bucket_name()
