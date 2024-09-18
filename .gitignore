@@ -1,2 +1,10 @@
 myenv/*
 terraform/.terraform/*
+unused.txt
+tests/__pycache__/*.*
+
+src/utils/__pycache__/*.*
+
+tests/__pycache__/test_upload.cpython-311-pytest-8.3.3.pyc
+tests/__pycache__/test_upload.cpython-311-pytest-8.3.3.pyc
+.coverage

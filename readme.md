@@ -75,3 +75,11 @@ by other code, you may want to be able to demonstrate its use by invoking it fro
 the command line.
 
 Taken from project brief, will change later
+
+
+Usage notes
+clone this repo
+run command 'make'
+more to be added to this later
+
+

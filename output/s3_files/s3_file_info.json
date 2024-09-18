@@ -1,1 +1,1 @@
-{"bucket_name": "gdpr-input-20240913031703022000000001", "s3_file_path": "2024_13_09_04:17:13_dummy_data_20_entries.csv"}
+{"bucket_name": "gdpr-input-20240916161037006700000001", "s3_file_path": "2024_16_09_20:43:12_dummy_data_20_entries.csv", "pii_fields": ["Name", "Email Address", "User ID"]}

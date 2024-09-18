@@ -8,12 +8,15 @@ s3 = boto3.client('s3')
 
 def read_bucket_name():
     """
-    This function reads the bucket name from a specified AWS S3 object.
-    The object is expected to contain a JSON file with a 'outputs' section,
-    and within that section, a 'gdpr_bucket' key with the bucket name as its value.
+    This function retrieves the name of the S3 bucket from a specified object in an S3 bucket.
+    The bucket name is obtained from a Terraform state file stored in an S3 bucket.
+
+    Parameters:
+    None
 
     Returns:
-    str: The name of the GDPR bucket as read from the S3 object.
+    str: The name of the S3 bucket if the operation is successful.
+        If the operation fails, returns None.
     """
     bucket_name = "tf-state-gdpr-obfuscator"
     object_key = "tf-state"
@@ -34,33 +37,31 @@ def read_bucket_name():
     except Exception as e:
         print(f"An error occurred: {e}")
     return None
-
 def generate_s3_file_path(local_file_path):
     """
-    Generates a timestamped file name for the S3 object.
+    Generates a timestamped filename for an S3 object based on the local file's name.
 
     Parameters:
-    local_file_path (str): The path to the local file for which a timestamped name is to be generated.
+    local_file_path (str): The path to the local file for which the timestamped filename is being generated.
 
     Returns:
-    str: A string representing the timestamped file name in the format 'YYYY_DD_MM_HH:MM:SS_filename'.
+    str: The timestamped filename in the format 'YYYY_DD_MM_HH:MM:SS_filename'.
     """
     timestamp = datetime.now().strftime('%Y_%d_%m_%H:%M:%S')
     file_name = os.path.basename(local_file_path)
     s3_file_path = f"{timestamp}_{file_name}"
     return s3_file_path
-
 def upload_file_to_s3(local_file_path, bucket_name):
     """
-    Uploads a file to S3 with a timestamped filename.
+    Uploads a local file to an S3 bucket.
 
     Parameters:
-    local_file_path (str): The path to the local file that needs to be uploaded.
+    local_file_path (str): The path to the local file to be uploaded.
     bucket_name (str): The name of the S3 bucket where the file will be uploaded.
 
     Returns:
-    str: The timestamped filename of the uploaded file in the format 'YYYY_DD_MM_HH:MM:SS_filename'.
-         If the file upload fails, returns None.
+    str: The S3 file path if the upload is successful.
+        Returns None if the upload fails or if the local file does not exist.
     """
     if not os.path.isfile(local_file_path):
         print(f"The file {local_file_path} does not exist")
@@ -81,23 +82,35 @@ def upload_file_to_s3(local_file_path, bucket_name):
     except Exception as e:
         print(f"An error occurred: {e}")
     return None
-
 def export_to_json(bucket_name, s3_file_path, export_dir):
     """
-    Exports the bucket name and s3_file_path to a JSON file.
+    Exports the S3 bucket name and file path to a JSON file.
+
+    This function creates a directory if it does not exist, then writes the S3 bucket name and file path
+    to a JSON file named 's3_file_info.json' in the specified export directory.
+
+    Parameters:
+    bucket_name (str): The name of the S3 bucket where the file was uploaded.
+    s3_file_path (str): The path of the file in the S3 bucket.
+    export_dir (str): The directory where the JSON file will be created.
+
+    Returns:
+    None
     """
     if not os.path.exists(export_dir):
         os.makedirs(export_dir)
 
     export_file = os.path.join(export_dir, 's3_file_info.json')
+    pii_fields = ["Name", "Email Address", "User ID"]
     data = {
         "bucket_name": bucket_name,
-        "s3_file_path": s3_file_path
+        "s3_file_path": s3_file_path,
+        "pii_fields": pii_fields
+        
     }
 
     with open(export_file, 'w') as json_file:
         json.dump(data, json_file)
-
 
 if __name__ == '__main__':
     local_file_path = 'src/data/dummy_data_20_entries.csv'
