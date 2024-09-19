@@ -4,7 +4,7 @@ resource "aws_iam_group" "s3_bucket_access" {
 
 resource "aws_iam_policy" "policy" {
   name        = "BucketAccessPolicy"
-  description = "Policy to allow access to S3 bucket"
+  description = "Policy to allow access to both S3 buckets"
   policy      = <<EOF
 {
   "Version": "2012-10-17",
@@ -16,7 +16,9 @@ resource "aws_iam_policy" "policy" {
       ],
       "Resource": [
         "${aws_s3_bucket.gdpr_input_bucket.arn}",              
-        "${aws_s3_bucket.gdpr_input_bucket.arn}/*"             
+        "${aws_s3_bucket.gdpr_input_bucket.arn}/*",  
+        "${aws_s3_bucket.gdpr_processed_bucket.arn}",              
+        "${aws_s3_bucket.gdpr_processed_bucket.arn}/*"  
       ]
     }
   ]
@@ -29,7 +31,6 @@ resource "aws_iam_group_policy_attachment" "s3_policy_attach" {
   policy_arn = aws_iam_policy.policy.arn
 }
 
-# Example IAM user or role to attach the group
 resource "aws_iam_user" "example_user" {
   name = "example-user"
 }
@@ -39,4 +40,45 @@ resource "aws_iam_user_group_membership" "user_membership" {
   groups = [
     aws_iam_group.s3_bucket_access.name
   ]
+}
+
+
+resource "aws_iam_role" "lambda_role" {
+  name = "lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          Service = "lambda.amazonaws.com",
+        },
+      },
+    ],
+  })
+}
+
+resource "aws_iam_policy" "lambda_policy" {
+  name        = "lambda-s3-access"
+  description = "Lambda policy to access S3 buckets"
+  policy      = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+        ],
+        Effect   = "Allow",
+        Resource = "${aws_s3_bucket.lambda_code_bucket.arn}/*",
+      },
+    ],
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_policy.arn
 }
