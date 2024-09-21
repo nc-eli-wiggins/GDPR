@@ -35,7 +35,7 @@ def read_input_bucket_name():
     return None
 ############################################################
 
-            #for the lambda function
+            #for the test lambda function
 def handler(event, context):
     return {
         'statusCode': 200,

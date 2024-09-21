@@ -15,7 +15,7 @@ data "terraform_remote_state" "gdpr_state" {
 
 data "archive_file" "upload_zip" {
   type        = "zip"
-  source_file = "${path.module}/../src/utils/upload.py"
+  source_file = "${path.module}/../src/utils/processing2.py"
   output_path = "${path.module}/../upload.zip"
 }
 

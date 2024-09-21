@@ -1,45 +1,11 @@
-resource "aws_iam_group" "s3_bucket_access" {
-  name = "s3-bucket-access"
-}
-
-resource "aws_iam_policy" "policy" {
-  name        = "BucketAccessPolicy"
-  description = "Policy to allow access to both S3 buckets"
-  policy      = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
-      "Resource": [
-        "${aws_s3_bucket.gdpr_input_bucket.arn}",              
-        "${aws_s3_bucket.gdpr_input_bucket.arn}/*",  
-        "${aws_s3_bucket.gdpr_processed_bucket.arn}",              
-        "${aws_s3_bucket.gdpr_processed_bucket.arn}/*"  
-      ]
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_group_policy_attachment" "s3_policy_attach" {
-  group      = aws_iam_group.s3_bucket_access.name
-  policy_arn = aws_iam_policy.policy.arn
-}
-
-resource "aws_iam_user" "example_user" {
-  name = "example-user"
-}
-
-resource "aws_iam_user_group_membership" "user_membership" {
-  user = aws_iam_user.example_user.name
-  groups = [
-    aws_iam_group.s3_bucket_access.name
-  ]
+data "terraform_remote_state" "gdpr_state2" {
+  backend = "s3"
+  
+  config = {
+    bucket = "tf-state-gdpr-obfuscator"
+    key    = "tf-state"
+    region = "eu-west-2"
+  }
 }
 
 resource "aws_iam_role" "lambda_role" {
@@ -59,33 +25,48 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
-resource "aws_iam_policy" "lambda_policy" {
-  name        = "lambda-s3-access"
+resource "aws_iam_policy" "lambda_s3_policy" {
+  name        = "lambda_s3_policy"
   description = "Policy to allow Lambda function access to S3 buckets"
   
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::${aws_s3_bucket.gdpr_processed_bucket.id}/*",   
-        "arn:aws:s3:::${aws_s3_bucket.gdpr_processed_bucket.id}"      
-      ]
-    }
-  ]
-}
-EOF
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          "arn:aws:s3:::tf-state-gdpr-obfuscator/tf-state",
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_input_bucket}",              
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_input_bucket}/*",  
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}",              
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}/*"  
+        ]
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
   role       = aws_iam_role.lambda_role.name
-  policy_arn = aws_iam_policy.lambda_policy.arn
+  policy_arn = aws_iam_policy.lambda_s3_policy.arn
 }
 
+resource "aws_iam_user" "example_user" {
+  name = "example-user"
+}
+
+resource "aws_iam_group" "s3_bucket_access" {
+  name = "s3-bucket-access"
+}
+
+resource "aws_iam_user_group_membership" "user_membership" {
+  user = aws_iam_user.example_user.name
+  groups = [
+    aws_iam_group.s3_bucket_access.name
+  ]
+}
