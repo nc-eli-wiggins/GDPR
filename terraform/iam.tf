@@ -42,9 +42,8 @@ resource "aws_iam_user_group_membership" "user_membership" {
   ]
 }
 
-
 resource "aws_iam_role" "lambda_role" {
-  name = "lambda-role"
+  name = "lambda-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -62,23 +61,31 @@ resource "aws_iam_role" "lambda_role" {
 
 resource "aws_iam_policy" "lambda_policy" {
   name        = "lambda-s3-access"
-  description = "Lambda policy to access S3 buckets"
-  policy      = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-        ],
-        Effect   = "Allow",
-        Resource = "${aws_s3_bucket.lambda_code_bucket.arn}/*",
-      },
-    ],
-  })
+  description = "Policy to allow Lambda function access to S3 buckets"
+  
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${aws_s3_bucket.gdpr_processed_bucket.id}/*",   
+        "arn:aws:s3:::${aws_s3_bucket.gdpr_processed_bucket.id}"      
+      ]
+    }
+  ]
+}
+EOF
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
+

@@ -33,8 +33,15 @@ def read_input_bucket_name():
     except Exception as e:
         print(f"An error occurred: {e}")
     return None
+############################################################
 
-
+            #for the lambda function
+def handler(event, context):
+    return {
+        'statusCode': 200,
+        'body': 'Hello, World!'
+    }
+############################################################
 
 def generate_s3_file_path(local_file_path):
     """

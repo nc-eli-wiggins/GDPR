@@ -19,3 +19,9 @@ output "gdpr_processed_bucket" {
 }
 
 
+# this must be ran 1st in stages using 
+# terraform apply -target=aws_s3_bucket.gdpr_input_bucket -target=aws_s3_bucket.gdpr_processed_bucket
+# then run terraform apply
+
+# might try to use workspaces, modules or depends on attribute
+
