@@ -37,18 +37,31 @@ resource "aws_iam_policy" "lambda_s3_policy" {
         Action = [
           "s3:GetObject",
           "s3:PutObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:DeleteObject",
+          "logs:*"
         ],
         Resource = [
           "arn:aws:s3:::tf-state-gdpr-obfuscator/tf-state",
           "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_input_bucket}",              
           "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_input_bucket}/*",  
           "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}",              
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}/*"  
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}/*",
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_invocation_bucket}",              
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_invocation_bucket}/*",
+          "arn:aws:logs:eu-west-2:*:log-group:/aws/lambda/my_lambda_function:*"
+          
         ]
       }
     ]
   })
+}
+resource "aws_lambda_permission" "allow_s3_invocation" {
+  statement_id  = "AllowS3Invoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.my_lambda.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_invocation_bucket}"
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {

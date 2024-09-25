@@ -1,0 +1,1 @@
+{"bucket_name": "gdpr-input-20240925175318305600000001", "s3_file_path": "upload.zip", "pii_fields": ["Graduation Date", "Email Address"]}
