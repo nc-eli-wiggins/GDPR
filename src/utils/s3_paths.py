@@ -15,7 +15,7 @@ def get_bucket_names_from_tf_state(bucket_name, object_key):
         return input_bucket_name, processed_bucket_name, invocation_bucket_name
     except Exception as e:
         print(f"Failed to retrieve bucket names: {e}")
-        return None, None
+        return None, None, None
     
     
     

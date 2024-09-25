@@ -60,7 +60,7 @@ def upload_file_to_s3(local_file_path, bucket_name):
 
 
 if __name__ == '__main__':
-    local_file_path = 'src/data/dummy_data_20_entries.csv'
+    local_file_path = 'src/data/dummy_data_large.csv'
     input_bucket_name, processed_bucket_name, invocation_bucket_name = get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
 
     if input_bucket_name:

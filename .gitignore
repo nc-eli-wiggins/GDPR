@@ -8,3 +8,7 @@ src/utils/__pycache__/*.*
 tests/__pycache__/test_upload.cpython-311-pytest-8.3.3.pyc
 tests/__pycache__/test_upload.cpython-311-pytest-8.3.3.pyc
 .coverage
+tests/__pycache__/test_upload.cpython-311-pytest-8.3.3.pyc
+src/utils/__pycache__/upload.cpython-311.pyc
+src/utils/__pycache__/upload.cpython-311.pyc
+tests/__pycache__/test_upload.cpython-311-pytest-8.3.3.pyc

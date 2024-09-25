@@ -6,7 +6,8 @@ resource "aws_lambda_function" "my_lambda" {
     runtime          = "python3.10"  # check (3.8 wont work with wrangler)
     source_code_hash = filebase64sha256(data.archive_file.upload_zip.output_path)
     layers           = ["arn:aws:lambda:eu-west-2:336392948345:layer:AWSSDKPandas-Python310:8"]
-
+    memory_size   = 1024
+    timeout       = 60
 environment {
     variables = {
     EXAMPLE_ENV_VAR = "value"

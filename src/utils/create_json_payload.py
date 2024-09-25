@@ -3,7 +3,7 @@ import os
 import boto3
 from src.utils.s3_paths import get_bucket_names_from_tf_state  
 
-pii_fields = ['Name', 'Email Address']
+pii_fields = ['Name', 'Email Address', 'Sex']
 
 def create_json_file(bucket_name, s3_file_path, pii_fields):
     """Create JSON structure and save it locally."""
