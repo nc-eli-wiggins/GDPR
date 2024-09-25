@@ -3,7 +3,7 @@ import os
 import boto3
 from src.utils.s3_paths import get_bucket_names_from_tf_state  
 
-pii_fields = ['Graduation Date', 'Email Address']
+pii_fields = ['Name', 'Email Address']
 
 def create_json_file(bucket_name, s3_file_path, pii_fields):
     """Create JSON structure and save it locally."""
@@ -61,18 +61,18 @@ def get_s3_file_name(bucket_name, prefix=''):
         return None
 
 if __name__ == "__main__":
-    tf_state_bucket = 'tf-state-gdpr-obfuscator'  # Your Terraform state bucket
-    tf_state_key = 'tf-state'                      # Your Terraform state key
+    tf_state_bucket = 'tf-state-gdpr-obfuscator'  
+    tf_state_key = 'tf-state'                      
 
-    input_bucket_name, _, invocation_bucket_name = get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
+    input_bucket_name, processed_bucket_name, invocation_bucket_name = get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
     
     if invocation_bucket_name:
-        s3_file_path = get_s3_file_name(input_bucket_name)  # Use the input bucket here
+        s3_file_path = get_s3_file_name(input_bucket_name)  
         
         if s3_file_path:
             local_json_path = create_json_file(input_bucket_name, s3_file_path, pii_fields)
             if local_json_path:
-                upload_json_to_s3(local_json_path, invocation_bucket_name)  # Use invocation bucket for upload
+                upload_json_to_s3(local_json_path, invocation_bucket_name)  
             else:
                 print("Failed to create JSON file.")
         else:

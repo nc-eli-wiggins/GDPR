@@ -2,17 +2,16 @@ import json
 import boto3
 import pandas as pd
 import io
-
 import logging
+import os
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 s3 = boto3.client('s3')
 
-
-
-
+tf_state_bucket = 'tf-state-gdpr-obfuscator'  
+tf_state_key = 'tf-state'                      
 def get_bucket_names_from_tf_state(bucket_name, object_key):
     """ Retrieves bucket names from the Terraform state file. """
     try:
@@ -20,87 +19,134 @@ def get_bucket_names_from_tf_state(bucket_name, object_key):
         data = json.loads(response['Body'].read().decode('utf-8'))
         input_bucket_name = data["outputs"]["gdpr_input_bucket"]["value"]
         processed_bucket_name = data["outputs"]["gdpr_processed_bucket"]["value"]
+        invocation_bucket_name = data["outputs"]["gdpr_invocation_bucket"]["value"]
         
-        return input_bucket_name, processed_bucket_name
+        return input_bucket_name, processed_bucket_name, invocation_bucket_name
     except Exception as e:
-        print(f"Failed to retrieve bucket names: {e}")
-        return None, None
-    
-    
-    
+        logger.error(f"Failed to retrieve bucket names: {e}")
+        return None, None, None
 
+def get_keys_from_bucket(bucket_name):
+    """ Retrieves the JSON key from the specified S3 bucket. """
+    response = s3.list_objects_v2(Bucket=bucket_name)
+    
+    json_key = None
+    
+    if 'Contents' in response:
+        for obj in response['Contents']:
+            key = obj['Key']
+            logger.info(f"Found key: {key}")  
+            if key.endswith('.json') and not json_key:
+                json_key = key 
+                
+    logger.info(f"JSON key found: {json_key}")  
+    return json_key
 def obfuscate_pii(bucket_name, s3_file_path, pii_fields):
     """ Obfuscates specified PII fields in a CSV file. """
     try:
         response = s3.get_object(Bucket=bucket_name, Key=s3_file_path)
         csv_data = response['Body'].read()
-        df = pd.read_csv(io.BytesIO(csv_data))
         
+        # Read the CSV data into a DataFrame
+        df = pd.read_csv(io.BytesIO(csv_data))
+        logger.info(f"DataFrame before obfuscation:\n{df.head()}")  # Log the DataFrame before obfuscation
+        
+        # Obfuscate the specified PII fields
         for pii_field in pii_fields:
             if pii_field in df.columns:
-                df[pii_field] = '***'  
+                logger.info(f"Obfuscating field: {pii_field}")  # Log the field being obfuscated
+                df[pii_field] = '***'  # Obfuscate PII fields
+            else:
+                logger.warning(f"Field '{pii_field}' not found in DataFrame columns.")
 
+        # Convert the DataFrame back to CSV
         obfuscated_csv = df.to_csv(index=False)
-        return obfuscated_csv.encode('utf-8')
+        logger.info("Obfuscation complete.")  # Log completion of obfuscation
+        return obfuscated_csv.encode('utf-8')  # Return the obfuscated CSV data
+
     except Exception as e:
-        print(f"Failed to process file: {e}")
+        logger.error(f"Failed to process file: {e}")  # Log the error
         return None
 
 def handler(event, context):
-    """ Main Lambda handler to obfuscate PII fields. """
-    tf_state_bucket = 'tf-state-gdpr-obfuscator'
-    tf_state_key = 'tf-state'
+    """ Lambda function handler. """
+    
+            
+    
+    input_bucket_name, processed_bucket_name, invocation_bucket_name = get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
 
-    input_bucket_name, processed_bucket_name = get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
-
-    if not input_bucket_name or not processed_bucket_name:
+    try:
+        json_file_path = get_keys_from_bucket(invocation_bucket_name)  
+        if not json_file_path:
+            raise ValueError("No JSON file found in the invocation bucket.")
+    except Exception as e:
+        logger.error(f"Error retrieving JSON file from bucket: {e}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'message': 'Failed to retrieve bucket names from Terraform state.'})
+            'body': json.dumps('Error retrieving JSON file from invocation bucket.')
         }
 
-    bucket_name = event.get('bucket_name')
-    s3_file_path = event.get('s3_file_path')
-    pii_fields = event.get('pii_fields', [])
-
-    if not bucket_name or not s3_file_path or not pii_fields:
+    try:
+        response = s3.get_object(Bucket=invocation_bucket_name, Key=json_file_path)  
+        json_content = json.loads(response['Body'].read().decode('utf-8'))
+    except Exception as e:
+        logger.error(f"Error reading JSON file: {e}")
         return {
-            'statusCode': 400,
-            'body': json.dumps({'message': 'Missing required parameters.'})
+            'statusCode': 500,
+            'body': json.dumps('Error reading JSON file.')
         }
+    
+    try:
+        input_bucket = json_content.get('bucket_name')  
+        csv_file_path = json_content.get('s3_file_path')  
+        pii_fields = json_content.get('pii_fields', [])
 
-    obfuscated_file_stream = obfuscate_pii(bucket_name, s3_file_path, pii_fields)
+        logger.info(f"CSV file path: {csv_file_path}, PII fields: {pii_fields}")
 
-    if obfuscated_file_stream:
-        processed_file_path = f"gdpr-processed-{s3_file_path.split('/')[-1]}"
+        if not input_bucket or not csv_file_path:
+            raise ValueError("Bucket name or CSV file path not found in the JSON content.")
         
-        s3.put_object(Bucket=processed_bucket_name, Key=processed_file_path, Body=obfuscated_file_stream)
-
-        empty_bucket(bucket_name)
-
+        obfuscated_csv_data = obfuscate_pii(input_bucket, csv_file_path, pii_fields)
+        
+        if obfuscated_csv_data:
+            if processed_bucket_name:
+                obfuscated_file_path = f"processed/{os.path.basename(csv_file_path)}"
+                s3.put_object(Bucket=processed_bucket_name, Key=obfuscated_file_path, Body=obfuscated_csv_data)
+                logger.info(f"Uploaded obfuscated CSV to {processed_bucket_name}/{obfuscated_file_path}")
+            else:
+                logger.error("Processed bucket name not found in JSON.")
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps('Processed bucket name not found.')
+                }
+        empty_bucket(input_bucket_name)
+        empty_bucket(invocation_bucket_name)
+        
         return {
             'statusCode': 200,
-            'body': json.dumps({'message': 'PII fields obfuscated and file uploaded successfully.'})
+            'body': json.dumps('Processing completed successfully.')
         }
-    else:
+    
+    except Exception as e:
+        logger.error(f"Error processing JSON content: {e}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'message': 'Failed to obfuscate PII fields.'})
+            'body': json.dumps('Error processing JSON content.')
         }
-
 
 
 def empty_bucket(bucket_name):
-    """Deletes all objects in the specified S3 bucket."""
+    """ Deletes all objects in the specified S3 bucket. """
     try:
         response = s3.list_objects_v2(Bucket=bucket_name)
 
         if 'Contents' in response:
             for obj in response['Contents']:
                 s3.delete_object(Bucket=bucket_name, Key=obj['Key'])
-            print(f"All objects deleted from bucket: {bucket_name}")
+            logger.info(f"All objects deleted from bucket: {bucket_name}")
         else:
-            print(f"No objects found in bucket: {bucket_name}")
+            logger.info(f"No objects found in bucket: {bucket_name}")
     
     except Exception as e:
-        print(f"Failed to delete objects from bucket: {e}")
+        logger.error(f"Failed to delete objects from bucket: {e}")
+

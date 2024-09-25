@@ -61,7 +61,7 @@ resource "aws_lambda_permission" "allow_s3_invocation" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.my_lambda.function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_invocation_bucket}"
+  source_arn    = aws_s3_bucket.gdpr_invocation_bucket.arn
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
