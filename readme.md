@@ -67,7 +67,7 @@ The MVP could be extended to support other file formats, primarily JSON and Parq
 
 - **Programming Language**: Python
 - **AWS SDK**: Boto3
-- **Testing Tools**: Pytest, Unittest, or Nose
+- **Testing Tools**: Pytest
 - **Deployment**: AWS Lambda
 
 ## Usage
