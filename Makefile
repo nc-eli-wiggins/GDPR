@@ -41,10 +41,25 @@ requirements: create-environment
 	$(call execute_in_env, $(PIP) install -r ./requirements.txt)
 
 ################################################################################################################
+# Set Up
+## Install bandit
+bandit:
+	$(call execute_in_env, $(PIP) install bandit)
+
+## Install safety
+safety:
+	$(call execute_in_env, $(PIP) install safety)
+
 
 ## Install coverage
 coverage:
 	$(call execute_in_env, $(PIP) install coverage)
+
+## Run the security test (bandit + safety)
+security-test:
+	$(call execute_in_env, safety check -r ./requirements.txt)
+	$(call execute_in_env, bandit -lll */*.py *c/*/*.py)
+
 
 ## Run the all unit tests
 unit-test:

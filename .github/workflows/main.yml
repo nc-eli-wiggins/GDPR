@@ -1,1 +1,98 @@
+name: Test and Deploy
+on: [push]
+jobs:
 
+  run-checks:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout Repo
+          uses: actions/checkout@v4
+        
+        - name: Setup Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+        
+        - name: Setup Venv
+          run: make requirements
+
+        - name: Setup AWS CLI
+          uses: aws-actions/configure-aws-credentials@v4 
+          with:
+            aws-region: eu-west-2
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+
+        - name: Run Security Checks
+          run: make security-test
+
+        - name: Check Coverage
+          run: make check-coverage             
+
+  run-test:
+    runs-on: ubuntu-latest
+    needs: run-checks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Setup Venv
+        run: make requirements
+
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+          aws-region: eu-west-2
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+
+      - name: Run Tests
+        run: make unit-test
+  
+  deploy:
+    runs-on: ubuntu-latest
+    needs: run-test
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+    
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: '3.11'
+    
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4 
+        with:
+            aws-region: eu-west-2
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3    
+        
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Apply for Specific Buckets
+        working-directory: terraform
+        run: |
+          terraform apply -target=aws_s3_bucket.gdpr_input_bucket \
+                          -target=aws_s3_bucket.gdpr_processed_bucket \
+                          -target=aws_s3_bucket.gdpr_invocation_bucket \
+                          -auto-approve
+
+      - name: Terraform Apply for All Resources
+        working-directory: terraform
+        run: terraform apply -auto-approve
+
+
+      # - name: Terraform Destroy
+      #   working-directory: terraform
+      #   run: terraform destroy -auto-approve

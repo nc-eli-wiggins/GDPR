@@ -6,13 +6,14 @@ from datetime import datetime
 from src.utils.processing2 import tf_state_bucket, tf_state_key
 from src.data.create_data import data_file_path
 
-s3 = boto3.client('s3')
+s3 = boto3.client("s3")
+
 
 def get_bucket_names_from_tf_state(bucket_name, object_key):
-    """ Retrieves bucket names from the Terraform state file. """
+    """Retrieves bucket names from the Terraform state file."""
     try:
         response = s3.get_object(Bucket=bucket_name, Key=object_key)
-        data = json.loads(response['Body'].read().decode('utf-8'))
+        data = json.loads(response["Body"].read().decode("utf-8"))
         input_bucket_name = data["outputs"]["gdpr_input_bucket"]["value"]
         processed_bucket_name = data["outputs"]["gdpr_processed_bucket"]["value"]
         invocation_bucket_name = data["outputs"]["gdpr_invocation_bucket"]["value"]
@@ -20,7 +21,7 @@ def get_bucket_names_from_tf_state(bucket_name, object_key):
     except Exception as e:
         print(f"Failed to retrieve bucket names: {e}")
         return None, None, None
-    
+
 
 def generate_s3_file_path(local_file_path):
     """
@@ -32,9 +33,10 @@ def generate_s3_file_path(local_file_path):
     Returns:
     str: The timestamped filename in the format 'YYYY_DD_MM_HH:MM:SS_filename'.
     """
-    timestamp = datetime.now().strftime('%Y_%d_%m_%H:%M:%S')
+    timestamp = datetime.now().strftime("%Y_%d_%m_%H:%M:%S")
     file_name = os.path.basename(local_file_path)
     return f"{timestamp}_{file_name}"
+
 
 def upload_file_to_s3(local_file_path, bucket_name):
     """
@@ -54,14 +56,15 @@ def upload_file_to_s3(local_file_path, bucket_name):
 
     s3_file_path = generate_s3_file_path(local_file_path)
 
-
     s3.upload_file(local_file_path, bucket_name, s3_file_path)
     print(f"Success: File {local_file_path} uploaded to {bucket_name}/{s3_file_path}")
     return s3_file_path
 
+
 local_file_path = data_file_path
-input_bucket_name, processed_bucket_name, invocation_bucket_name = get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
+input_bucket_name, processed_bucket_name, invocation_bucket_name = (
+    get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
+)
 
 if input_bucket_name:
-        s3_file_path = upload_file_to_s3(local_file_path, input_bucket_name)
-
+    s3_file_path = upload_file_to_s3(local_file_path, input_bucket_name)
