@@ -74,10 +74,70 @@ The MVP could be extended to support other file formats, primarily JSON and Parq
 
 Although the tool is intended to function as a library, demonstration of its use can be done through command-line invocation.
 
+# Opening a Free AWS Account
 
-Usage notes
-clone this repo
-run command 'make'
-more to be added to this later
+Amazon Web Services (AWS) offers a free tier that allows you to access various services without incurring costs for a limited period. Follow these steps to create your free AWS account:
+
+## Step 1: Go to the AWS Free Tier Page
+
+1. Open your web browser and navigate to the [AWS Free Tier page](https://aws.amazon.com/free/).
+
+## Step 2: Click on "Create a Free Account"
+
+2. Click on the **Create a Free Account** button located in the center of the page.
+
+## Cloning the Repository
+
+Before setting up AWS access keys, you need to clone the repository to your local machine. Follow these steps:
+
+1. **Open Your Terminal or Command Prompt:**
+   - On your local machine, open your terminal (Linux/Mac) or command prompt (Windows).
+
+2. **Clone the Repository:**
+   - Use the following command to clone the repository:
+     ```bash
+     git clone https://github.com/A-Waterhouse/GDPR
+     ```
+   
+
+3. **Navigate to the Cloned Repository:**
+   - After cloning, change into the directory of the cloned repository:
+
+After cloning the repository, you can proceed to set up AWS access keys in GitHub.
+
+## Setting Up AWS Access Keys in GitHub
+
+To enable the project to interact with AWS services, you need to configure AWS access keys in your GitHub repository. Follow these steps to set up the necessary secrets:
+
+1. **Navigate to the GDPR Repository:**
+   - Go to the GitHub website and open the repository.
+
+2. **Access Repository Settings:**
+   - Click on the `Settings` tab located in the upper right corner of your repository page.
+
+3. **Select Secrets and Variables:**
+   - On the left sidebar, click on `Secrets and variables`.
+   - Then click on `Actions` to manage secrets for GitHub Actions.
+
+4. **Add New Repository Secret:**
+   - Click on the `New repository secret` button.
+
+5. **Create AWS Access Key:**
+   - If you haven’t done so already, go to the AWS Management Console.
+   - Navigate to the IAM (Identity and Access Management) service.
+   - Click on `Users`, select your user, and go to the `Security credentials` tab.
+   - Click on `Create access key` and note down your Access Key ID and Secret Access Key.
+
+6. **Enter the Secrets:**
+   - In the `Name` field, enter `AWS_ACCESS_KEY`.
+   - In the `Value` field, paste your Access Key ID from AWS.
+   - Click on `Add secret`.
+   - Repeat the process to create another secret:
+     - In the `Name` field, enter `AWS_SECRET`.
+     - In the `Value` field, paste your Secret Access Key from AWS.
+     - Click on `Add secret`.
+
+Once these secrets are set up, your GitHub Actions workflows will have the necessary permissions to access AWS resources securely.
+
 
 
