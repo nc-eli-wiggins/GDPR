@@ -47,25 +47,21 @@ def obfuscate_pii(bucket_name, s3_file_path, pii_fields):
         response = s3.get_object(Bucket=bucket_name, Key=s3_file_path)
         csv_data = response['Body'].read()
         
-        # Read the CSV data into a DataFrame
         df = pd.read_csv(io.BytesIO(csv_data))
-        logger.info(f"DataFrame before obfuscation:\n{df.head()}")  # Log the DataFrame before obfuscation
-        
-        # Obfuscate the specified PII fields
+        logger.info(f"DataFrame before obfuscation:\n{df.head()}")          
         for pii_field in pii_fields:
             if pii_field in df.columns:
-                logger.info(f"Obfuscating field: {pii_field}")  # Log the field being obfuscated
-                df[pii_field] = '***'  # Obfuscate PII fields
+                logger.info(f"Obfuscating field: {pii_field}")  
+                df[pii_field] = '***'  
             else:
                 logger.warning(f"Field '{pii_field}' not found in DataFrame columns.")
 
-        # Convert the DataFrame back to CSV
         obfuscated_csv = df.to_csv(index=False)
-        logger.info("Obfuscation complete.")  # Log completion of obfuscation
-        return obfuscated_csv.encode('utf-8')  # Return the obfuscated CSV data
+        logger.info("Obfuscation complete.")  
+        return obfuscated_csv.encode('utf-8')  
 
     except Exception as e:
-        logger.error(f"Failed to process file: {e}")  # Log the error
+        logger.error(f"Failed to process file: {e}")  
         return None
 
 def handler(event, context):

@@ -51,4 +51,4 @@ unit-test:
 	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} pytest -v)
 
 check-coverage:
-	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} coverage run --omit 'myenv/*' -m pytest && coverage report -m)
+	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} coverage run --omit 'myenv/*' -m pytest -vvv && coverage report -m)

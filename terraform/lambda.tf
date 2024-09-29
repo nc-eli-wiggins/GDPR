@@ -15,10 +15,3 @@ environment {
 }
 }
 
-# invoke with 
-# {
-#     "bucket_name": "bucket", 
-#     "s3_file_path": "file.csv",
-#     "pii_fields": ["Name", "Email Address", "User ID"]
-# }
-

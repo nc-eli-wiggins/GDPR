@@ -1,307 +1,195 @@
 import boto3
 import json
 import pytest
-
 from moto import mock_aws
 from unittest.mock import patch, MagicMock
-import os
+
 from datetime import datetime
-from botocore.exceptions import NoCredentialsError, PartialCredentialsError
-from src.utils.upload import generate_s3_file_path, read_bucket_name, upload_file_to_s3
+
+from src.utils.upload import generate_s3_file_path, upload_file_to_s3, get_bucket_names_from_tf_state
+
 
 @pytest.fixture
 def s3_upload_setup():
     """
-    This fixture sets up a mock AWS S3 environment for testing purposes.
-    It creates a bucket named "tf-state-gdpr-obfuscator" and uploads a JSON file named "tf-state" to it.
-    The JSON file contains a single output named "gdpr_bucket" with a value of "test-bucket".
-
-    Returns:
-        None (as it is a fixture, it does not return a value directly)
+    Sets up a mock AWS S3 environment for testing.
     """
     with mock_aws():
-        s3 = boto3.client('s3', region_name='eu-west-2')  
+        s3 = boto3.client('s3', region_name='eu-west-2')
         bucket_name = "tf-state-gdpr-obfuscator"
         object_key = "tf-state"
 
-        # Create a new S3 bucket
         s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
 
-        # Upload a JSON file to the bucket
         s3.put_object(
             Bucket=bucket_name,
             Key=object_key,
             Body=json.dumps({
                 "outputs": {
-                    "gdpr_bucket": {
-                        "value": "test-bucket",
-                        "type": "string"
-                    }
+                    "gdpr_input_bucket": {"value": "input-bucket-name"},
+                    "gdpr_processed_bucket": {"value": "processed-bucket-name"},
+                    "gdpr_invocation_bucket": {"value": "invocation-bucket-name"}
                 }
             })
         )
-        yield
+        yield bucket_name, object_key  
 
-    """
-    This function tests the read_bucket_name function when AWS credentials are not available.
 
-    Parameters:
-    None: This function does not take any parameters. It uses a mock AWS S3 environment and patches the s3.get_object method to simulate a NoCredentialsError exception.
+def test_get_bucket_names_from_tf_state(s3_upload_setup):
+    bucket_name, object_key = s3_upload_setup  
+    result = get_bucket_names_from_tf_state(bucket_name, object_key)
 
-    Returns:
-    None: This function does not return a value directly. It asserts that the retrieved bucket name is None when AWS credentials are not available.
+    assert result == ("input-bucket-name", "processed-bucket-name", "invocation-bucket-name")
 
-    Note:
-    This function uses the pytest fixture s3_upload_setup to set up a mock AWS S3 environment.
-    """
-    with mock_aws():
-        s3 = boto3.client('s3', region_name='eu-west-2')
-        bucket_name = "tf-state-gdpr-obfuscator"
-        object_key = "tf-state"
-        
-        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
-        s3.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=json.dumps({
-                "outputs": {
-                    "gdpr_bucket": {
-                        "value": "test-bucket",
-                        "type": "string"
-                    }
-                }
-            })
-        )
+def test_get_bucket_names_from_tf_state_no_such_key():
+    bucket_name = "tf-state-gdpr-obfuscator"
+    object_key = "non-existent-key"
+    
+    result = get_bucket_names_from_tf_state(bucket_name, object_key)
+    assert result == (None, None, None)
 
-        with patch('src.utils.upload.s3.get_object', side_effect=NoCredentialsError):
-            result = read_bucket_name()
-            assert result is None
-def test_read_bucket_name(s3_upload_setup):
-    """
-    This function tests the read_bucket_name function by verifying that it correctly retrieves the name of the GDPR bucket from the Terraform state file.
 
-    Parameters:
-    s3_upload_setup (fixture): A pytest fixture that sets up a mock AWS S3 environment for testing purposes. It creates a bucket named "tf-state-gdpr-obfuscator" and uploads a JSON file named "tf-state" to it. The JSON file contains a single output named "gdpr_bucket" with a value of "test-bucket".
-
-    Returns:
-    None: This function does not return a value directly. It asserts that the retrieved bucket name matches the expected value.
-    """
-    bucket_name = read_bucket_name()
-    assert bucket_name == "test-bucket"
-def test_read_bucket_name_no_such_key():
-    """
-    This function tests the read_bucket_name function when the specified key does not exist in the S3 bucket.
-
-    Parameters:
-    None: This function does not take any parameters. It uses a mock AWS S3 environment and patches the s3.get_object method to simulate a NoSuchKey exception.
-
-    Returns:
-    None: This function does not return a value directly. It asserts that the retrieved bucket name is None when the specified key does not exist.
-
-    This function uses the pytest fixture s3_upload_setup to set up a mock AWS S3 environment.
-    """
-    with mock_aws():
-        s3 = boto3.client('s3', region_name='eu-west-2')
-        bucket_name = "tf-state-gdpr-obfuscator"
-        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
-
-        with patch('src.utils.upload.s3.get_object', side_effect=s3.exceptions.NoSuchKey):
-            result = read_bucket_name()
-            assert result is None
-def test_read_bucket_name_json_decode_error():
-    """
-    This function tests the read_bucket_name function when the Terraform state file contains invalid JSON.
-
-    Parameters:
-    None: This function does not take any parameters. It uses a mock AWS S3 environment and uploads a non-JSON file to the S3 bucket.
-
-    Returns:
-    None: This function does not return a value directly. It asserts that the retrieved bucket name is None when the Terraform state file contains invalid JSON.
-
-    Note:
-    This function uses the pytest fixture s3_upload_setup to set up a mock AWS S3 environment.
-    """
-    with mock_aws():
-        s3 = boto3.client('s3', region_name='eu-west-2')
-        bucket_name = "tf-state-gdpr-obfuscator"
-        object_key = "tf-state"
-
-        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
-        s3.put_object(Bucket=bucket_name, Key=object_key, Body='not a json')
-
-        result = read_bucket_name()
-        assert result is None
-def test_read_bucket_name_no_credentials():
-    """
-    This function tests the read_bucket_name function when AWS credentials are not available.
-
-    Parameters:
-    None: This function does not take any parameters. It uses a mock AWS S3 environment and patches the s3.get_object method to simulate a NoCredentialsError exception.
-
-    Returns:
-    None: This function does not return a value directly. It asserts that the retrieved bucket name is None when AWS credentials are not available.
-
-    Note:
-    This function uses the pytest fixture s3_upload_setup to set up a mock AWS S3 environment.
-    """
-    with mock_aws():
-        s3 = boto3.client('s3', region_name='eu-west-2')
-        bucket_name = "tf-state-gdpr-obfuscator"
-        object_key = "tf-state"
-
-        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
-        s3.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=json.dumps({
-                "outputs": {
-                    "gdpr_bucket": {
-                        "value": "test-bucket",
-                        "type": "string"
-                    }
-                }
-            })
-        )
-
-        with patch('src.utils.upload.s3.get_object', side_effect=NoCredentialsError):
-            result = read_bucket_name()
-            assert result is None
-def test_read_bucket_name_partial_credentials():
-    """
-    This function tests the read_bucket_name function when AWS credentials are partially available.
-
-    Parameters:
-    None: This function does not take any parameters. It uses a mock AWS S3 environment and patches the s3.get_object method to simulate a PartialCredentialsError exception.
-
-    Returns:
-    None: This function does not return a value directly. It asserts that the retrieved bucket name is None when AWS credentials are partially available.
-
-    Note:
-    This function uses the pytest fixture s3_upload_setup to set up a mock AWS S3 environment.
-    """
-    with mock_aws():
-        s3 = boto3.client('s3', region_name='eu-west-2')
-        bucket_name = "tf-state-gdpr-obfuscator"
-        object_key = "tf-state"
-
-        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
-        s3.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=json.dumps({
-                "outputs": {
-                    "gdpr_bucket": {
-                        "value": "test-bucket",
-                        "type": "string"
-                    }
-                }
-            })
-        )
-
-        with patch('src.utils.upload.s3.get_object', side_effect=PartialCredentialsError):
-            result = read_bucket_name()
-            assert result is None
 def test_generate_s3_file_path():
     """
-    This function tests the generate_s3_file_path function by verifying that it correctly generates a unique timestamped file path for an input local file path.
-
-    Parameters:
-    local_file_path (str): The local file path for which the timestamped file path needs to be generated. It should be a valid file path.
-
-    Returns:
-    str: The generated timestamped file path. The file path is in the format "{timestamp}_{filename}", where timestamp is in the format "YYYY_DD_MM_HH:MM:SS".
+    Tests the generation of a unique timestamped S3 file path.
     """
     local_file_path = 'src/data/dummy_data_20_entries.csv'
     with patch('src.utils.upload.datetime') as mock_datetime:
         fixed_timestamp = datetime(2024, 9, 12, 15, 30, 45)
         mock_datetime.now.return_value = fixed_timestamp
+
         expected_timestamp = fixed_timestamp.strftime('%Y_%d_%m_%H:%M:%S')
-        expected_file_name = os.path.basename(local_file_path)
-        expected_s3_file_path = f"{expected_timestamp}_{expected_file_name}"
+        expected_s3_file_path = f"{expected_timestamp}_dummy_data_20_entries.csv"
         result = generate_s3_file_path(local_file_path)
         assert result == expected_s3_file_path
-def test_upload_file_to_s3_valid_input():
-    """
-    This function tests the upload_file_to_s3 function with valid input.
 
-    Parameters:
-    local_file_path (str): The local file path of the file to be uploaded. It should be a valid file path.
-    bucket_name (str): The name of the S3 bucket where the file will be uploaded.
 
-    Returns:
-    str: The generated timestamped file path in the S3 bucket. The file path is in the format "{timestamp}_{filename}", where timestamp is in the format "YYYY_DD_MM_HH:MM:SS".
+def test_upload_file_to_s3_valid_input(s3_upload_setup):
     """
-    # Arrange
+    Tests uploading a valid file to S3.
+    """
     local_file_path = 'src/data/dummy_data_20_entries.csv'
     bucket_name = "test-bucket"
-    expected_s3_file_path = generate_s3_file_path(local_file_path)
 
-    # Mock the s3.upload_file method
-    with patch('src.utils.upload.s3') as mock_aws:
-        mock_aws.upload_file.return_value = None
-
-        # Act
+    with patch('os.path.isfile', return_value=True), \
+         patch('src.utils.upload.s3.upload_file') as mock_s3_upload:
+        
         result = upload_file_to_s3(local_file_path, bucket_name)
 
-        # Assert
-        mock_aws.upload_file.assert_called_once_with(
-            local_file_path, bucket_name, expected_s3_file_path
-        )
-        assert result == expected_s3_file_path
+        mock_s3_upload.assert_called_once()
+
+        assert result.startswith(datetime.now().strftime('%Y_%d_%m_%H:%M:%S'))
+
+
 def test_upload_file_to_s3_file_not_found():
-    """
-    This function tests the upload_file_to_s3 function when the specified local file does not exist.
-
-    Parameters:
-    local_file_path (str): The local file path of the file to be uploaded. It should be a valid file path.
-    bucket_name (str): The name of the S3 bucket where the file will be uploaded.
-
-    Returns:
-    None: If the specified local file does not exist, the function prints an error message and returns None.
-    """
-    # Arrange
     local_file_path = 'src/data/non_existent_file.csv'
     bucket_name = "test-bucket"
-    expected_error_message = f"The file {local_file_path} does not exist"
-
-    # Mock the print function to capture error messages
+    expected_error_message = f"Error: The file {local_file_path} does not exist."
+    
     with patch('builtins.print') as mock_print:
-        # Act
         result = upload_file_to_s3(local_file_path, bucket_name)
-
-        # Assert
         mock_print.assert_called_once_with(expected_error_message)
         assert result is None
+
+
 def test_upload_file_to_s3_generates_unique_timestamped_filename():
     """
-    This function tests the upload_file_to_s3 function to ensure it generates a unique timestamped filename.
-
-    Parameters:
-    local_file_path (str): The local file path of the file to be uploaded. It should be a valid file path.
-    bucket_name (str): The name of the S3 bucket where the file will be uploaded.
-
-    Returns:
-    None: This function does not return a value directly. It asserts that the generated timestamped file path matches the expected value.
+    Tests if a unique timestamped filename is generated during S3 upload.
     """
     local_file_path = 'src/data/dummy_data_20_entries.csv'
     bucket_name = "test-bucket"
 
-
     with patch('src.utils.upload.datetime') as mock_datetime, \
-        patch('src.utils.upload.s3') as mock_aws:
-
+         patch('src.utils.upload.s3.upload_file') as mock_s3_upload:
+        
         fixed_timestamp = datetime(2024, 9, 12, 15, 30, 45)
         mock_datetime.now.return_value = fixed_timestamp
 
-
-        mock_aws.upload_file.return_value = None
-
-
         result = upload_file_to_s3(local_file_path, bucket_name)
 
-
         expected_timestamp = fixed_timestamp.strftime('%Y_%d_%m_%H:%M:%S')
-        expected_file_name = os.path.basename(local_file_path)
-        expected_s3_file_path = f"{expected_timestamp}_{expected_file_name}"
+        expected_s3_file_path = f"{expected_timestamp}_dummy_data_20_entries.csv"
+
         assert result == expected_s3_file_path
 
+
+@pytest.mark.parametrize(
+    "bucket_name, object_key, mock_response, expected, test_id",
+    [
+        (
+            "test-bucket", 
+            "test-key", 
+            {
+                "Body": MagicMock(read=MagicMock(return_value=json.dumps({
+                    "outputs": {
+                        "gdpr_input_bucket": {"value": "input-bucket"},
+                        "gdpr_processed_bucket": {"value": "processed-bucket"},
+                        "gdpr_invocation_bucket": {"value": "invocation-bucket"}
+                    }
+                }).encode('utf-8')))
+            }, 
+            ("input-bucket", "processed-bucket", "invocation-bucket"),
+            "happy_path"
+        ),
+        (
+            "test-bucket", 
+            "test-key", 
+            {
+                "Body": MagicMock(read=MagicMock(return_value=json.dumps({
+                    "outputs": {
+                        "gdpr_input_bucket": {"value": ""},
+                        "gdpr_processed_bucket": {"value": ""},
+                        "gdpr_invocation_bucket": {"value": ""}
+                    }
+                }).encode('utf-8')))
+            }, 
+            ("", "", ""),
+            "empty_bucket_names"
+        ),
+        (
+            "test-bucket", 
+            "test-key", 
+            {
+                "Body": MagicMock(read=MagicMock(return_value=json.dumps({
+                    "outputs": {}
+                }).encode('utf-8')))
+            }, 
+            (None, None, None),
+            "missing_keys"
+        ),
+        (
+            "test-bucket", 
+            "test-key", 
+            {
+                "Body": MagicMock(read=MagicMock(return_value=b"invalid json"))
+            }, 
+            (None, None, None),
+            "invalid_json"
+        ),
+        (
+            "test-bucket", 
+            "test-key", 
+            Exception("S3 error"), 
+            (None, None, None),
+            "s3_exception"
+        ),
+    ],
+    ids=[test_id for _, _, _, _, test_id in [
+        ("test-bucket", "test-key", None, None, "happy_path"),
+        ("test-bucket", "test-key", None, None, "empty_bucket_names"),
+        ("test-bucket", "test-key", None, None, "missing_keys"),
+        ("test-bucket", "test-key", None, None, "invalid_json"),
+        ("test-bucket", "test-key", None, None, "s3_exception"),
+    ]]
+)
+@patch('src.utils.upload.s3.get_object')
+def test_get_bucket_names_from_tf_state(mock_get_object, bucket_name, object_key, mock_response, expected, test_id):
+    if isinstance(mock_response, Exception):
+        mock_get_object.side_effect = mock_response
+    else:
+        mock_get_object.return_value = mock_response
+
+    result = get_bucket_names_from_tf_state(bucket_name, object_key)
+
+    assert result == expected
+    

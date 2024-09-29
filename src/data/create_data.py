@@ -1,11 +1,16 @@
 import pandas as pd
 import numpy as np
-
 from faker import Faker
+import os
+
+data_directory = 'src/data'
+os.makedirs(data_directory, exist_ok=True)
+
+data_file_name = 'dummy_data_large.csv'
+data_file_path = os.path.join(data_directory, data_file_name)
 
 fake = Faker()
-
-num_entries = 12000  
+num_entries = 12000  # this will make file over 1MB
 
 data = {
     'User ID': [i + 1001 for i in range(num_entries)],
@@ -20,5 +25,6 @@ data = {
 
 df = pd.DataFrame(data)
 
-df.to_csv('dummy_data_large.csv', index=False)
+df.to_csv(data_file_path, index=False)
 
+print(f"Data saved to {data_file_path}")
