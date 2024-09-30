@@ -1,12 +1,3 @@
-# data "terraform_remote_state" "gdpr_state3" {
-#   backend = "s3"
-  
-#   config = {
-#     bucket = "tf-state-gdpr-obfuscator"
-#     key    = "tf-state"
-#     region = "eu-west-2"
-#   }
-# }
 
 resource "aws_s3_bucket_notification" "json_upload" {
   bucket = data.terraform_remote_state.gdpr_state.outputs.gdpr_invocation_bucket

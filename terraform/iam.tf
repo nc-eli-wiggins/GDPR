@@ -1,12 +1,4 @@
-# data "terraform_remote_state" "gdpr_state2" {
-#   backend = "s3"
-  
-#   config = {
-#     bucket = "tf-state-gdpr-obfuscator"
-#     key    = "tf-state"
-#     region = "eu-west-2"
-#   }
-# }
+
 
 resource "aws_iam_role" "lambda_role" {
   name = "lambda-execution-role"
