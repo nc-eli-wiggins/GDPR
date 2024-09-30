@@ -1,12 +1,12 @@
-data "terraform_remote_state" "gdpr_state2" {
-  backend = "s3"
+# data "terraform_remote_state" "gdpr_state2" {
+#   backend = "s3"
   
-  config = {
-    bucket = "tf-state-gdpr-obfuscator"
-    key    = "tf-state"
-    region = "eu-west-2"
-  }
-}
+#   config = {
+#     bucket = "tf-state-gdpr-obfuscator"
+#     key    = "tf-state"
+#     region = "eu-west-2"
+#   }
+# }
 
 resource "aws_iam_role" "lambda_role" {
   name = "lambda-execution-role"
@@ -43,12 +43,12 @@ resource "aws_iam_policy" "lambda_s3_policy" {
         ],
         Resource = [
           "arn:aws:s3:::tf-state-gdpr-obfuscator/tf-state",
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_input_bucket}",              
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_input_bucket}/*",  
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}",              
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_processed_bucket}/*",
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_invocation_bucket}",              
-          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state2.outputs.gdpr_invocation_bucket}/*",
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state.outputs.gdpr_input_bucket}",              
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state.outputs.gdpr_input_bucket}/*",  
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state.outputs.gdpr_processed_bucket}",              
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state.outputs.gdpr_processed_bucket}/*",
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state.outputs.gdpr_invocation_bucket}",              
+          "arn:aws:s3:::${data.terraform_remote_state.gdpr_state.outputs.gdpr_invocation_bucket}/*",
           "arn:aws:logs:eu-west-2:*:log-group:/aws/lambda/my_lambda_function:*"
           
         ]

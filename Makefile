@@ -67,3 +67,18 @@ unit-test:
 
 check-coverage:
 	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} coverage run --omit 'myenv/*' -m pytest -vvv && coverage report -m)
+
+############################################################################################################
+
+## create dummy data file
+data:
+	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} python src/data/create_data.py)
+
+## upload dummy data file to s3 input bucket
+upload:
+	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} python src/utils/upload.py)
+
+## invoke the function
+invoke:
+	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} python src/utils/create_json_payload.py)
+
