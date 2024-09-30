@@ -103,6 +103,8 @@ Before setting up AWS access keys, you need to clone the repository to your loca
 3. **Navigate to the Cloned Repository:**
    - After cloning, change into the directory of the cloned repository:
 
+4. run `make requirements` in the terminal.
+
 After cloning the repository, you can proceed to set up AWS access keys in GitHub.
 
 ## Setting Up AWS Access Keys in GitHub
