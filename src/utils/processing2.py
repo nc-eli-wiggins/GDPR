@@ -15,7 +15,17 @@ tf_state_key = "tf-state"
 
 
 def get_bucket_names_from_tf_state(bucket_name, object_key):
-    """Retrieves bucket names from the Terraform state file."""
+    """
+    Retrieves the names of the input, processed, and invocation buckets from a Terraform state file.
+
+    Parameters:
+    bucket_name (str): The name of the S3 bucket where the Terraform state file is located.
+    object_key (str): The key of the Terraform state file within the specified bucket.
+
+    Returns:
+    tuple: A tuple containing the names of the input, processed, and invocation buckets.
+           If an error occurs during retrieval, returns (None, None, None).
+    """
     try:
         response = s3.get_object(Bucket=bucket_name, Key=object_key)
         data = json.loads(response["Body"].read().decode("utf-8"))
@@ -30,7 +40,16 @@ def get_bucket_names_from_tf_state(bucket_name, object_key):
 
 
 def get_keys_from_bucket(bucket_name):
-    """Retrieves the JSON key from the specified S3 bucket."""
+    """
+    Retrieves the key of the first JSON file found in the specified S3 bucket.
+
+    Parameters:
+    bucket_name (str): The name of the S3 bucket where the JSON file is located.
+
+    Returns:
+    str: The key of the first JSON file found in the specified bucket.
+         If no JSON file is found, returns None.
+    """
     response = s3.list_objects_v2(Bucket=bucket_name)
 
     json_key = None
@@ -47,7 +66,15 @@ def get_keys_from_bucket(bucket_name):
 
 
 def obfuscate_pii(bucket_name, s3_file_path, pii_fields):
-    """Obfuscates specified PII fields in a CSV file."""
+    """
+    Parameters:
+    bucket_name (str): The name of the S3 bucket where the CSV file is located.
+    s3_file_path (str): The path to the CSV file within the specified S3 bucket.
+    pii_fields (list): A list of column names representing the PII fields to be obfuscated.
+
+    Returns:
+    bytes: The obfuscated CSV data as bytes. If an error occurs during processing, returns None.
+    """
     try:
         response = s3.get_object(Bucket=bucket_name, Key=s3_file_path)
         csv_data = response["Body"].read()
@@ -71,8 +98,23 @@ def obfuscate_pii(bucket_name, s3_file_path, pii_fields):
 
 
 def handler(event, context):
-    """Lambda function handler."""
+    """
+    AWS Lambda function handler for processing PII data obfuscation.
 
+    This function retrieves the names of the input, processed, and invocation 
+    buckets from a Terraform state file, retrieves the key of the first 
+    JSON file found in the invocation bucket, reads the JSON content, and processes
+    the CSV file located in the specified input bucket. The PII fields 
+    specified in the JSON content are obfuscated, and the obfuscated CSV 
+    file is uploaded to the processed bucket. The input and invocation buckets are then emptied.
+
+    Parameters:
+    event (dict): The event data passed to the Lambda function.
+    context (LambdaContext): The runtime information provided by AWS Lambda.
+
+    Returns:
+    dict: A dictionary containing the HTTP status code and body of the response.
+    """
     input_bucket_name, processed_bucket_name, invocation_bucket_name = (
         get_bucket_names_from_tf_state(tf_state_bucket, tf_state_key)
     )
@@ -140,7 +182,15 @@ def handler(event, context):
 
 
 def empty_bucket(bucket_name):
-    """Deletes all objects in the specified S3 bucket."""
+    """
+    Deletes all objects in the specified S3 bucket.
+
+    Parameters:
+    bucket_name (str): The name of the S3 bucket to be emptied.
+
+    Returns:
+    None: This function does not return any value. It logs information about the deletion process.
+    """
     try:
         response = s3.list_objects_v2(Bucket=bucket_name)
 

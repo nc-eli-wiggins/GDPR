@@ -10,7 +10,17 @@ s3 = boto3.client("s3")
 
 
 def get_bucket_names_from_tf_state(bucket_name, object_key):
-    """Retrieves bucket names from the Terraform state file."""
+    """
+    Retrieves the names of the input, processed, and invocation buckets from a Terraform state file.
+
+    Parameters:
+    bucket_name (str): The name of the S3 bucket where the Terraform state file is located.
+    object_key (str): The key of the Terraform state file within the specified bucket.
+
+    Returns:
+    tuple: A tuple containing the names of the input, processed, and invocation buckets.
+           If an error occurs during retrieval, returns (None, None, None).
+    """    
     try:
         response = s3.get_object(Bucket=bucket_name, Key=object_key)
         data = json.loads(response["Body"].read().decode("utf-8"))

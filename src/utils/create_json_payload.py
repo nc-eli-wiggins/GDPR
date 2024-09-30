@@ -3,7 +3,7 @@ import os
 import boto3
 from src.utils.processing2 import tf_state_bucket, tf_state_key
 
-pii_fields = ["Name", "Email Address", "Sex"]
+pii_fields = ["Name", "Email Address", "Sex", "DOB"]
 
 s3 = boto3.client("s3")
 
