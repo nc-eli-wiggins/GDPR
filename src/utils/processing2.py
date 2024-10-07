@@ -10,7 +10,7 @@ logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 
-tf_state_bucket = "tf-state-gdpr-obfuscator"
+tf_state_bucket = "tf-state-gdpr-obfuscator-test"
 tf_state_key = "tf-state"
 
 
